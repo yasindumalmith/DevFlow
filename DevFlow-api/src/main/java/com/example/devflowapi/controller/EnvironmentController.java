@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/environments")
@@ -42,5 +43,9 @@ public class EnvironmentController {
             @RequestParam String deletedBy) {
         environmentService.deleteEnvironment(id, deletedBy);
         return ResponseEntity.noContent().build();
+    }
+    @GetMapping("/{id}/health")
+    public ResponseEntity<Map<String, Object>> getHealth(@PathVariable String id) {
+        return ResponseEntity.ok(environmentService.getEnvironmentHealth(id));
     }
 }

@@ -43,7 +43,10 @@ public class TerraformRunner {
         );
         pb.redirectErrorStream(true);
         Process p = pb.start();
-        p.waitFor();
+        int exitCode = p.waitFor();
+        if (exitCode != 0) {
+            throw new RuntimeException("Failed to copy Terraform module from: " + modulePath);
+        }
 
         return envDir;
     }
