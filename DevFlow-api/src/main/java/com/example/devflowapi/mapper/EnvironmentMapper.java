@@ -5,7 +5,8 @@ import com.example.devflowapi.model.Environment;
 import org.springframework.stereotype.Component;
 
 @Component
-public class EnvironmentMapper {
+public class
+EnvironmentMapper {
 
     public EnvironmentResponse toResponse(Environment environment) {
         return EnvironmentResponse.builder()
