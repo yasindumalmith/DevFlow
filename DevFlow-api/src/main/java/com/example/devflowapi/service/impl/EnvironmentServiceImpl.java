@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 @Service
@@ -114,6 +115,17 @@ public class EnvironmentServiceImpl implements EnvironmentService {
                 environmentRepository.save(env);
             }
         });
+    }
+    public Map<String, Object> getEnvironmentHealth(String id) {
+        Environment env = environmentRepository.findById(id)
+                .orElseThrow(() ->
+                        new RuntimeException("Environment not found: " + id));
+
+        // Update last active timestamp
+        env.setLastActiveAt(LocalDateTime.now());
+        environmentRepository.save(env);
+
+        return kubernetesService.getNamespaceStatus(env.getNamespace());
     }
 
     private void auditLog(String envId, String action,
