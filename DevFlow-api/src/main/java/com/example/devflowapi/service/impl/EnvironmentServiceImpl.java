@@ -2,6 +2,7 @@ package com.example.devflowapi.service.impl;
 
 import com.example.devflowapi.dto.CreateEnvironmentRequest;
 import com.example.devflowapi.dto.EnvironmentResponse;
+import com.example.devflowapi.kubernetes.KubernetesService;
 import com.example.devflowapi.mapper.EnvironmentMapper;
 import com.example.devflowapi.model.AuditLog;
 import com.example.devflowapi.model.Environment;
@@ -9,12 +10,14 @@ import com.example.devflowapi.model.EnvironmentStatus;
 import com.example.devflowapi.repository.AuditLogRepository;
 import com.example.devflowapi.repository.EnvironmentRepository;
 import com.example.devflowapi.service.EnvironmentService;
+import com.example.devflowapi.terraform.TerraformRunner;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 @RequiredArgsConstructor
@@ -22,9 +25,14 @@ import java.util.List;
 public class EnvironmentServiceImpl implements EnvironmentService {
     private final EnvironmentRepository environmentRepository;
     private final AuditLogRepository auditLogRepository;
+    private final TerraformRunner terraformRunner;
+    private final KubernetesService kubernetesService;
 
     public EnvironmentResponse createEnvironment(CreateEnvironmentRequest request) {
         log.info("Creating environment: {}", request.getName());
+
+        String namespaceName = "devflow-" +
+                request.getName().toLowerCase().replaceAll("[^a-z0-9-]", "-");
 
         Environment env = Environment.builder()
                 .name(request.getName())
@@ -33,13 +41,35 @@ public class EnvironmentServiceImpl implements EnvironmentService {
                 .build();
 
         env = environmentRepository.save(env);
+        final String envId = env.getId();
 
         auditLog(env.getId(), "CREATE", request.getOwnerEmail(),
                 "Environment creation initiated");
 
         // Terraform call comes in Phase 2 — for now just save
-        env.setStatus(EnvironmentStatus.RUNNING);
-        environmentRepository.save(env);
+        final Environment savedEnv = env;
+        CompletableFuture.runAsync(() -> {
+            try {
+                terraformRunner.provision(namespaceName,
+                        request.getOwnerEmail());
+
+                savedEnv.setStatus(EnvironmentStatus.RUNNING);
+                environmentRepository.save(savedEnv);
+
+                auditLog(envId, "PROVISIONED",
+                        request.getOwnerEmail(),
+                        "Namespace created in Kubernetes");
+
+                log.info("Environment provisioned: {}", namespaceName);
+
+            } catch (Exception e) {
+                log.error("Provisioning failed for {}", namespaceName, e);
+                savedEnv.setStatus(EnvironmentStatus.FAILED);
+                environmentRepository.save(savedEnv);
+                auditLog(envId, "FAILED", request.getOwnerEmail(),
+                        "Error: " + e.getMessage());
+            }
+        });
 
         return toResponse(env);
     }
