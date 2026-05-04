@@ -96,9 +96,24 @@ public class EnvironmentServiceImpl implements EnvironmentService {
         auditLog(id, "DELETE", deletedBy, "Environment destruction initiated");
 
         // Terraform destroy comes in Phase 2
-        env.setStatus(EnvironmentStatus.DESTROYED);
-        env.setDestroyedAt(LocalDateTime.now());
-        environmentRepository.save(env);
+        CompletableFuture.runAsync(() -> {
+            try {
+                terraformRunner.destroy(env.getNamespace(),
+                        env.getOwnerEmail());
+
+                env.setStatus(EnvironmentStatus.DESTROYED);
+                env.setDestroyedAt(LocalDateTime.now());
+                environmentRepository.save(env);
+
+                auditLog(id, "DESTROYED", deletedBy,
+                        "Namespace removed from Kubernetes");
+
+            } catch (Exception e) {
+                log.error("Destroy failed for {}", env.getNamespace(), e);
+                env.setStatus(EnvironmentStatus.FAILED);
+                environmentRepository.save(env);
+            }
+        });
     }
 
     private void auditLog(String envId, String action,
