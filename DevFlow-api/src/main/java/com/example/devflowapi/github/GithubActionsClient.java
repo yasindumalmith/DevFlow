@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
@@ -31,6 +32,8 @@ public class GithubActionsClient {
 
     public void triggerDeployment(String namespaceName,
                                   String imageTag) {
+        assertConfigured();
+
         String url = String.format(
                 "https://api.github.com/repos/%s/%s/actions/workflows/%s/dispatches",
                 owner, repo, workflowId
@@ -64,6 +67,8 @@ public class GithubActionsClient {
     }
 
     public String getLatestWorkflowStatus() {
+        assertConfigured();
+
         String url = String.format(
                 "https://api.github.com/repos/%s/%s/actions/workflows/%s/runs?per_page=1",
                 owner, repo, workflowId
@@ -94,5 +99,21 @@ public class GithubActionsClient {
         }
 
         return "unknown";
+    }
+
+    private void assertConfigured() {
+        if (!StringUtils.hasText(githubToken)) {
+            throw new IllegalStateException(
+                    "GitHub Actions is not configured. Set the GITHUB_TOKEN environment variable."
+            );
+        }
+        if (!StringUtils.hasText(owner)
+                || !StringUtils.hasText(repo)
+                || !StringUtils.hasText(workflowId)) {
+            throw new IllegalStateException(
+                    "GitHub Actions is not configured. Check devflow.github.owner, "
+                            + "devflow.github.sample-app-repo, and devflow.github.workflow-id."
+            );
+        }
     }
 }
