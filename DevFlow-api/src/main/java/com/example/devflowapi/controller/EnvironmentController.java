@@ -2,6 +2,9 @@ package com.example.devflowapi.controller;
 
 import com.example.devflowapi.dto.CreateEnvironmentRequest;
 import com.example.devflowapi.dto.EnvironmentResponse;
+import com.example.devflowapi.dto.TriggerDeploymentRequest;
+import com.example.devflowapi.model.Deployment;
+import com.example.devflowapi.service.DeploymentService;
 import com.example.devflowapi.service.EnvironmentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +22,7 @@ import java.util.Map;
 @Slf4j
 public class EnvironmentController {
     private final EnvironmentService environmentService;
+    private final DeploymentService deploymentService;
 
     @PostMapping
     public ResponseEntity<EnvironmentResponse> create(
@@ -47,5 +51,19 @@ public class EnvironmentController {
     @GetMapping("/{id}/health")
     public ResponseEntity<Map<String, Object>> getHealth(@PathVariable String id) {
         return ResponseEntity.ok(environmentService.getEnvironmentHealth(id));
+    }
+
+    @PostMapping("/{id}/deploy")
+    public ResponseEntity<Deployment> deploy(
+            @PathVariable String id,
+            @Valid @RequestBody TriggerDeploymentRequest request) {
+        return ResponseEntity.accepted()
+                .body(deploymentService.triggerDeployment(id, request));
+    }
+
+    @GetMapping("/{id}/deployments")
+    public ResponseEntity<List<Deployment>> getDeployments(
+            @PathVariable String id) {
+        return ResponseEntity.ok(deploymentService.getDeployments(id));
     }
 }
