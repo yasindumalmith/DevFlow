@@ -4,6 +4,7 @@ import com.example.devflowapi.dto.CreateEnvironmentRequest;
 import com.example.devflowapi.dto.EnvironmentResponse;
 import com.example.devflowapi.kubernetes.KubernetesService;
 import com.example.devflowapi.mapper.EnvironmentMapper;
+import com.example.devflowapi.metrics.DevFlowMetrics;
 import com.example.devflowapi.model.AuditLog;
 import com.example.devflowapi.model.Environment;
 import com.example.devflowapi.model.EnvironmentStatus;
@@ -11,6 +12,7 @@ import com.example.devflowapi.repository.AuditLogRepository;
 import com.example.devflowapi.repository.EnvironmentRepository;
 import com.example.devflowapi.service.EnvironmentService;
 import com.example.devflowapi.terraform.TerraformRunner;
+import io.micrometer.core.instrument.Timer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -28,6 +30,7 @@ public class EnvironmentServiceImpl implements EnvironmentService {
     private final AuditLogRepository auditLogRepository;
     private final TerraformRunner terraformRunner;
     private final KubernetesService kubernetesService;
+    private final DevFlowMetrics devFlowMetrics;
 
     public EnvironmentResponse createEnvironment(CreateEnvironmentRequest request) {
         log.info("Creating environment: {}", request.getName());
@@ -48,6 +51,8 @@ public class EnvironmentServiceImpl implements EnvironmentService {
                 "Environment creation initiated");
 
         // Terraform call comes in Phase 2 — for now just save
+        devFlowMetrics.recordEnvironmentCreated();
+        Timer.Sample timer = devFlowMetrics.startProvisioningTimer();
         final Environment savedEnv = env;
         CompletableFuture.runAsync(() -> {
             try {
@@ -63,6 +68,7 @@ public class EnvironmentServiceImpl implements EnvironmentService {
 
                 log.info("Environment provisioned: {}", namespaceName);
 
+
             } catch (Exception e) {
                 log.error("Provisioning failed for {}", namespaceName, e);
                 savedEnv.setStatus(EnvironmentStatus.FAILED);
@@ -70,6 +76,7 @@ public class EnvironmentServiceImpl implements EnvironmentService {
                 auditLog(envId, "FAILED", request.getOwnerEmail(),
                         "Error: " + e.getMessage());
             }
+            devFlowMetrics.stopProvisioningTimer(timer);
         });
 
         return toResponse(env);
@@ -114,6 +121,8 @@ public class EnvironmentServiceImpl implements EnvironmentService {
                 env.setStatus(EnvironmentStatus.FAILED);
                 environmentRepository.save(env);
             }
+            devFlowMetrics.recordEnvironmentDestroyed(deletedBy.equals(
+                    "system-auto-cleanup") ? "auto-cleanup" : "manual");
         });
     }
     public Map<String, Object> getEnvironmentHealth(String id) {
