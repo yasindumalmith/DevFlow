@@ -2,6 +2,7 @@ package com.example.devflowapi.service.impl;
 
 import com.example.devflowapi.dto.TriggerDeploymentRequest;
 import com.example.devflowapi.github.GithubActionsClient;
+import com.example.devflowapi.metrics.DevFlowMetrics;
 import com.example.devflowapi.model.*;
 import com.example.devflowapi.repository.AuditLogRepository;
 import com.example.devflowapi.repository.DeploymentRepository;
@@ -23,6 +24,7 @@ public class DeploymentServiceImpl implements DeploymentService {
     private final EnvironmentRepository environmentRepository;
     private final AuditLogRepository auditLogRepository;
     private final GithubActionsClient gitHubActionsClient;
+    private final DevFlowMetrics devFlowMetrics;
 
     @Override
     public Deployment triggerDeployment(String environmentId, TriggerDeploymentRequest request) {
@@ -55,6 +57,7 @@ public class DeploymentServiceImpl implements DeploymentService {
                 env.getNamespace(),
                 request.getImageTag()
         );
+        devFlowMetrics.recordDeploymentTriggered();
 
         auditLogRepository.save(AuditLog.builder()
                 .environmentId(environmentId)
@@ -89,6 +92,8 @@ public class DeploymentServiceImpl implements DeploymentService {
 
                         log.info("Deployment succeeded for {}",
                                 savedEnv.getNamespace());
+
+                        devFlowMetrics.recordDeploymentSuccess();
                         return;
 
                     } else if (status.contains("completed:failure")) {
@@ -101,6 +106,7 @@ public class DeploymentServiceImpl implements DeploymentService {
 
                         log.error("Deployment failed for {}",
                                 savedEnv.getNamespace());
+                        devFlowMetrics.recordDeploymentFailed();
                         return;
                     }
 
