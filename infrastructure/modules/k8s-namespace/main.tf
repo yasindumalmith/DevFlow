@@ -4,14 +4,30 @@ terraform {
       source  = "hashicorp/kubernetes"
       version = "~> 2.0"
     }
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
   }
 }
 
-provider "kubernetes" {
-  config_path    = "~/.kube/config"
-  config_context = "minikube"
+# Get EKS cluster details dynamically
+data "aws_eks_cluster" "cluster" {
+  name = "devflow-cluster"
 }
 
+data "aws_eks_cluster_auth" "cluster" {
+  name = "devflow-cluster"
+}
+
+provider "kubernetes" {
+  host                   = data.aws_eks_cluster.cluster.endpoint
+  cluster_ca_certificate = base64decode(data.aws_eks_cluster.cluster.certificate_authority[0].data)
+  token                  = data.aws_eks_cluster_auth.cluster.token
+}
+provider "aws" {
+  region = "ap-south-1"
+}
 # Create the namespace
 resource "kubernetes_namespace" "env_namespace" {
   metadata {
