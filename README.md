@@ -1,17 +1,17 @@
-# DevFlow — Internal Developer Self-Service Platform
+# DevFlow - Internal Developer Self-Service Platform
 
-A platform that lets developers provision isolated Kubernetes environments, deploy services into them, and monitor everything through a REST API — without involving a DevOps engineer.
+A platform that lets developers provision isolated Kubernetes environments, deploy services into them, and monitor everything through a REST API without involving a DevOps engineer.
 
 ## The Problem
 
-In early-stage startups, a single DevOps engineer becomes the bottleneck for the entire team. Developers wait hours or days for staging environments, deployment triggers, or environment cleanup. DevFlow removes that bottleneck by giving developers self-service control through an API.
+In early stage startups, a single DevOps engineer becomes the bottleneck for the entire team. Developers wait hours or days for staging environments, deployment triggers, or environment cleanup. DevFlow removes that bottleneck by giving developers self-service control through an API.
 
 Demo Link:- [https://youtu.be/77I57kN5CbQ](https://youtu.be/77I57kN5CbQ)
 
 ## What It Does
 
 - One API call provisions a real Kubernetes namespace on AWS EKS
-- Developers trigger deployments via API — no manual kubectl needed
+- Developers trigger deployments via API no manual kubectl needed
 - Idle environments are automatically destroyed after 30 minutes to control AWS cost
 - Every action is logged in an audit trail
 - Prometheus and Grafana monitor the platform in real time
@@ -59,14 +59,14 @@ Spring Boot (DevFlow Core)
 
 ## Key Features
 
-**Self-service provisioning**  
+**Self service provisioning**  
 Developers create their own environments via API. Average provisioning time: 9 seconds.
 
 **Cost control through auto-destroy**  
 A scheduler runs every 5 minutes, finds environments idle for 30+ minutes, and destroys them via Terraform. In a real startup running 10 environments, this cuts cloud cost by 40-60%.
 
 **Full audit trail**  
-Every action — creation, deployment, destruction — written to PostgreSQL with timestamp and actor. Searchable by environment ID.
+Every action creation, deployment, destruction — written to PostgreSQL with timestamp and actor. Searchable by environment ID.
 
 **Resource isolation**  
 Each environment gets its own namespace with resource quotas (CPU, memory, pod count) and network policies preventing cross-environment traffic.
